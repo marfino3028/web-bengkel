@@ -30,30 +30,43 @@ Build produksi: `npm run build` lalu `node .output/server/index.mjs`.
 3. **Port**: `8000` (sesuai `EXPOSE`/`PORT` di Dockerfile).
 4. **Environment variables**:
    ```
-   NUXT_PUBLIC_API_BASE=https://api-bengkel-production.up.railway.app/api
+   NUXT_PUBLIC_API_BASE=https://apibengkel.hamztech.my.id/api
    ```
-   (ganti dengan domain API kamu; bila pakai domain Cloudflare → `https://api.domainmu.com/api`)
+   (gunakan domain API kamu; sebelum domain custom aktif bisa pakai domain Railway `https://<app>.up.railway.app/api`)
 5. **Deploy**. Koyeb memberi URL seperti `https://web-bengkel-<org>.koyeb.app`.
 
 > Nuxt membaca `NUXT_PUBLIC_API_BASE` saat runtime, jadi cukup set di Koyeb tanpa rebuild manual.
 
 ---
 
-## 🌐 Custom Domain via Cloudflare (subdomain `www`/root)
+## 🌐 Custom Domain via Cloudflare — `webbengkel.hamztech.my.id`
 
-Untuk website publik gunakan domain utama atau **`www`**:
+Website publik dipasang di **`webbengkel.hamztech.my.id`** (Koyeb). Prasyarat: domain `hamztech.my.id` aktif di Cloudflare.
 
-1. **Koyeb** → service → *Settings* → **Domains** → **Add domain** → `www.domainmu.com`. Koyeb menampilkan target CNAME (mis. `xxxx.koyeb.app`).
-2. **Cloudflare** → **DNS** → **Add record**: Type `CNAME` · Name `www` · Target `xxxx.koyeb.app` · Proxy **DNS only** dulu (aktifkan oranye setelah SSL terbit).
-3. (Opsional) Redirect root `domainmu.com` → `www` lewat Cloudflare *Redirect Rules*, atau tambahkan record `CNAME` `@` ke target Koyeb.
-4. Selesai — website di `https://www.domainmu.com`.
+**Langkah 1 — Koyeb:** app web-bengkel → **Settings** → **Domains** → **Add domain** → `webbengkel.hamztech.my.id`. Salin target CNAME (mis. `web-bengkel-xxxx.koyeb.app`).
 
-**Ringkasan 3 subdomain ekosistem:**
+**Langkah 2 — Cloudflare DNS** (`hamztech.my.id` → DNS → Add record):
+
+| Type | Name | Target | Proxy | TTL |
+|---|---|---|---|---|
+| `CNAME` | `webbengkel` | `web-bengkel-xxxx.koyeb.app` *(dari Koyeb)* | **DNS only** (abu-abu) | Auto |
+
+> Wajib **DNS only** dulu agar Koyeb bisa menerbitkan SSL. Setelah aktif boleh **Proxied** + SSL/TLS **Full (strict)**.
+
+**Langkah 3 — Tes:** buka `https://webbengkel.hamztech.my.id`.
+
+**Langkah 4 — Env Koyeb** (lalu Redeploy):
+```
+NUXT_PUBLIC_API_BASE=https://apibengkel.hamztech.my.id/api
+```
+Pastikan API mengizinkan origin ini: di Railway set `FRONTEND_URLS` memuat `https://webbengkel.hamztech.my.id`.
+
+**🗺️ Peta domain ekosistem:**
 | Subdomain | Tujuan | Platform |
 |---|---|---|
-| `api.domainmu.com` | API Laravel | Railway |
-| `cms.domainmu.com` | Panel admin | Koyeb |
-| `www.domainmu.com` | Website publik (repo ini) | Koyeb |
+| `apibengkel.hamztech.my.id` | API Laravel | Railway |
+| `cmsbengkel.hamztech.my.id` | Panel admin | Koyeb |
+| `webbengkel.hamztech.my.id` | Website publik (repo ini) | Koyeb |
 
 ---
 
