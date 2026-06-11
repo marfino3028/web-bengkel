@@ -5,10 +5,12 @@ const cart = useCartStore()
 const auth = useAuthStore()
 const { rupiah } = useFormat()
 
+const { pay } = useMidtrans()
+
 const form = reactive({
   fulfillment: 'pickup' as 'pickup' | 'delivery',
   shipping_address: '',
-  payment_method: 'transfer' as 'cash' | 'transfer',
+  pay_choice: 'midtrans' as 'midtrans' | 'transfer' | 'cash',
   notes: '',
 })
 
@@ -27,18 +29,33 @@ async function submit() {
   }
   loading.value = true
   try {
+    const online = form.pay_choice === 'midtrans'
     const res = await useApi()<{ data: { order_code: string } }>('/orders', {
       method: 'POST',
       body: {
         items: cart.items.map((i) => ({ product_id: i.product_id, qty: i.qty })),
         fulfillment: form.fulfillment,
         shipping_address: form.fulfillment === 'delivery' ? form.shipping_address : null,
-        payment_method: form.payment_method,
+        payment_method: online ? 'transfer' : form.pay_choice,
+        payment_gateway: online ? 'midtrans' : 'manual',
         notes: form.notes || null,
       },
     })
+    const code = res.data.order_code
     cart.clear()
-    await navigateTo(`/akun/pesanan/${res.data.order_code}`)
+    if (online) {
+      try {
+        await pay(`/orders/${code}/pay`, {
+          onSuccess: () => navigateTo(`/akun/pesanan/${code}`),
+          onPending: () => navigateTo(`/akun/pesanan/${code}`),
+          onClose: () => navigateTo(`/akun/pesanan/${code}`),
+        })
+        return
+      } catch {
+        // Gateway belum dikonfigurasi → arahkan ke detail, bisa dibayar nanti.
+      }
+    }
+    await navigateTo(`/akun/pesanan/${code}`)
   } catch (e: any) {
     errorMsg.value = e?.data?.message || 'Gagal membuat pesanan. Stok mungkin tidak mencukupi.'
   } finally {
@@ -78,13 +95,20 @@ async function submit() {
 
         <div class="card p-5">
           <h2 class="font-display font-semibold text-slate-900">Metode Pembayaran</h2>
-          <div class="mt-3 grid gap-3 sm:grid-cols-2">
-            <label class="flex cursor-pointer items-center gap-3 rounded-xl border p-3" :class="form.payment_method === 'transfer' ? 'border-primary-500 bg-primary-50' : 'border-slate-200'">
-              <input v-model="form.payment_method" type="radio" value="transfer" class="accent-primary-600">
-              <span class="text-sm font-semibold">Transfer Bank</span>
+          <div class="mt-3 space-y-2">
+            <label class="flex cursor-pointer items-center gap-3 rounded-xl border p-3" :class="form.pay_choice === 'midtrans' ? 'border-primary-500 bg-primary-50' : 'border-slate-200'">
+              <input v-model="form.pay_choice" type="radio" value="midtrans" class="accent-primary-600">
+              <span class="flex-1">
+                <span class="block text-sm font-semibold">Bayar Online <span class="badge ml-1 bg-accent-100 text-accent-600">Disarankan</span></span>
+                <span class="text-xs text-slate-500">Kartu, e-wallet, Virtual Account via Midtrans</span>
+              </span>
             </label>
-            <label class="flex cursor-pointer items-center gap-3 rounded-xl border p-3" :class="form.payment_method === 'cash' ? 'border-primary-500 bg-primary-50' : 'border-slate-200'">
-              <input v-model="form.payment_method" type="radio" value="cash" class="accent-primary-600">
+            <label class="flex cursor-pointer items-center gap-3 rounded-xl border p-3" :class="form.pay_choice === 'transfer' ? 'border-primary-500 bg-primary-50' : 'border-slate-200'">
+              <input v-model="form.pay_choice" type="radio" value="transfer" class="accent-primary-600">
+              <span class="text-sm font-semibold">Transfer Bank (manual)</span>
+            </label>
+            <label class="flex cursor-pointer items-center gap-3 rounded-xl border p-3" :class="form.pay_choice === 'cash' ? 'border-primary-500 bg-primary-50' : 'border-slate-200'">
+              <input v-model="form.pay_choice" type="radio" value="cash" class="accent-primary-600">
               <span class="text-sm font-semibold">Bayar di Tempat</span>
             </label>
           </div>

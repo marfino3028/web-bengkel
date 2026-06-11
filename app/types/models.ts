@@ -69,6 +69,7 @@ export interface Booking {
   grand_total: number
   payment_status: string
   payment_method?: string | null
+  payment_gateway?: string | null
   paid_at?: string | null
   items?: BookingItem[]
   created_at: string
@@ -97,6 +98,7 @@ export interface Order {
   status: string
   payment_status: string
   payment_method?: string | null
+  payment_gateway?: string | null
   paid_at?: string | null
   notes?: string | null
   items?: OrderItem[]

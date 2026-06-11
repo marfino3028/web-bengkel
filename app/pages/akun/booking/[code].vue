@@ -15,6 +15,23 @@ const { data: booking, refresh } = await useAsyncData(`booking-${route.params.co
   }
 })
 
+const { pay } = useMidtrans()
+const paying = ref(false)
+async function payNow() {
+  paying.value = true
+  try {
+    await pay(`/bookings/${route.params.code}/pay`, {
+      onSuccess: () => refresh(),
+      onPending: () => refresh(),
+      onClose: () => refresh(),
+    })
+  } catch (e: any) {
+    alert(e?.data?.message || 'Pembayaran online belum tersedia. Hubungi admin untuk pembayaran manual.')
+  } finally {
+    paying.value = false
+  }
+}
+
 const cancelling = ref(false)
 async function cancel() {
   if (!confirm('Batalkan booking ini?')) return
@@ -87,8 +104,18 @@ async function cancel() {
       </div>
 
       <button
+        v-if="booking.payment_status === 'unpaid' && booking.status !== 'cancelled' && booking.grand_total > 0"
+        class="btn btn-accent mt-6 w-full"
+        :disabled="paying"
+        @click="payNow"
+      >
+        <Icon :name="paying ? 'lucide:loader-2' : 'lucide:credit-card'" :class="paying ? 'animate-spin' : ''" />
+        {{ paying ? 'Memproses...' : 'Bayar Online' }}
+      </button>
+
+      <button
         v-if="booking.status === 'pending'"
-        class="btn btn-outline mt-6 w-full border-red-300 text-red-600 hover:bg-red-50"
+        class="btn btn-outline mt-3 w-full border-red-300 text-red-600 hover:bg-red-50"
         :disabled="cancelling"
         @click="cancel"
       >
